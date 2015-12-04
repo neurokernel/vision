@@ -778,7 +778,6 @@ class Synapse(object):
     def postname(self):
         return self.params['postname']
 
-
 def create_pattern(n_dict_1, n_dict_2, save_as=None):
     """
     If `save_as` is not None, save the pattern as the specified file name.
@@ -802,25 +801,30 @@ def create_pattern(n_dict_1, n_dict_2, save_as=None):
     lpu1_sel = plsel.Selector.union(lpu1_sel_out, lpu1_sel_in)
     lpu2_sel = plsel.Selector.union(lpu2_sel_out, lpu2_sel_in)
 
-    pat = Pattern(lpu1_sel, lpu2_sel)
-
-    pat.interface[lpu1_sel_in_gpot, 'io', 'type'] = ['in', 'gpot']
-    pat.interface[lpu1_sel_out_gpot, 'io', 'type'] = ['out', 'gpot']
-    pat.interface[lpu2_sel_in_gpot, 'io', 'type'] = ['in', 'gpot']
-    pat.interface[lpu2_sel_out_gpot, 'io', 'type'] = ['out', 'gpot']
-    pat.interface[lpu1_sel_in_spike, 'io', 'type'] = ['in', 'spike']
-    pat.interface[lpu1_sel_out_spike, 'io', 'type'] = ['out', 'spike']
-    pat.interface[lpu2_sel_in_spike, 'io', 'type'] = ['in', 'spike']
-    pat.interface[lpu2_sel_out_spike, 'io', 'type'] = ['out', 'spike']
-
     Neuron_list_12 = ['L1', 'L2', 'L3', 'L4', 'L5', 'T1']
     Neuron_list_21 = ['C2', 'C3']
-    
-    for i in range(768):
-        for neuron in Neuron_list_12:
-            pat['/lamina/cart'+str(i)+'/'+neuron, '/medulla/cart'+str(i)+'/'+neuron] = 1
-        for neuron in Neuron_list_21:
-            pat['/medulla/cart'+str(i)+'/'+neuron, '/lamina/cart'+str(i)+'/'+neuron] = 1
+
+    gpot_sel = plsel.Selector.union(lpu1_sel_out_gpot, lpu1_sel_in_gpot,
+                                    lpu2_sel_out_gpot, lpu2_sel_in_gpot)
+    spike_sel = plsel.Selector.union(lpu1_sel_out_spike, lpu1_sel_in_spike,
+                                     lpu2_sel_out_spike, lpu2_sel_in_spike)
+
+    Neuron_str_12 = '['+','.join(Neuron_list_12)+']'
+    Neuron_str_21 = '['+','.join(Neuron_list_21)+']'
+    cart_str = '['+','.join(['cart%i' % i for i in range(768)])+']'
+
+    from_sel_12 = '/lamina'+cart_str+Neuron_str_12
+    to_sel_12 = '/medulla'+cart_str+Neuron_str_12
+    from_sel_21 = '/medulla'+cart_str+Neuron_str_21
+    to_sel_21 = '/lamina'+cart_str+Neuron_str_21
+
+    from_sel = from_sel_12 + ',' + from_sel_21
+    to_sel = to_sel_12 + ',' + to_sel_21
+
+    pat = Pattern.from_concat(lpu1_sel, lpu2_sel,
+                              from_sel=from_sel, to_sel=to_sel,
+                              gpot_sel=gpot_sel, spike_sel=spike_sel, data=1)
+                              
     if save_as:
         with open(save_as, 'wb') as pat_file:
             pickle.dump(pat, pat_file)
