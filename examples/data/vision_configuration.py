@@ -2,6 +2,15 @@
 
 """
 Vision demo configuration routines.
+
+Notes
+-----
+Information regarding the cartridges and columns that own specific
+neurons are not used during execution, but may be used for
+examining the generated LPU graphs.
+
+Genetic/neurotransmitter information included in the neuron data is artificial
+and does not have any biological significance.
 """
 
 import collections
