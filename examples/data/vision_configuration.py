@@ -4,14 +4,12 @@
 Vision demo configuration routines.
 """
 
+import collections
 import csv
 import os
-import collections
-import cPickle as pickle
 
-import numpy as np
-import gzip
 import networkx as nx
+import numpy as np
 
 from neurokernel.LPU.LPU import LPU
 from neurokernel.pattern import Pattern
@@ -254,7 +252,7 @@ class vision_LPU(object):
         else:
             return 'LPU unconfigured'
 
-    def export_to_gexf(self, filename):
+    def to_graph(self):
         g = nx.MultiDiGraph()
         num = 0
         
@@ -297,22 +295,12 @@ class vision_LPU(object):
                 g.add_edge(synapse.pre_neuron.num, synapse.post_neuron.num,
                            attr_dict = synapse.params)
     
-        if isinstance(filename, str):
-            name, ext = os.path.splitext(filename)
-            if name == '':
-                raise ValueError("Please specify a valid filename")
-        
-            if ext == '.gz':
-                with gzip.open(filename, 'w') as f:
-                    nx.write_gexf(g, f, prettyprint=True)
-            else:
-                if ext != '.gexf':
-                    name = filename + '.gexf'
-                else:
-                    name = filename
-                nx.write_gexf(g, name, prettyprint=True)
-        else:
-            raise ValueError("Specify the filename in string")
+        return g
+
+    def export_to_gexf(self, filename):
+        g = self.to_graph()
+        nx.write_gexf(g, filename, prettyprint=True)
+        return g
 
     def add_selectors(self):
         for neuron_type in self.neuron_dict:
@@ -791,7 +779,7 @@ class Synapse(object):
 
 def create_pattern(n_dict_1, n_dict_2, save_as=None):
     """
-    If `save_as` is not None, save the pattern as the specified file name.
+    If `save_as` is not None, save the pattern in GEXF format as the specified file name.
     """
 
     lpu1_sel_in_gpot = plsel.Selector(LPU.extract_in_gpot(n_dict_1))
@@ -837,8 +825,7 @@ def create_pattern(n_dict_1, n_dict_2, save_as=None):
                               gpot_sel=gpot_sel, spike_sel=spike_sel, data=1)
     
     if save_as:
-        with open(save_as, 'wb') as pat_file:
-            pickle.dump(pat, pat_file)
+        nx.write_gexf(pat.to_graph(), save_as, prettyprint=True)
     return pat
 
 def append_field(rec, name, arr, dtype=None):

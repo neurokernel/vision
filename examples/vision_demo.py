@@ -5,7 +5,7 @@ Vision system demo.
 
 Notes
 -----
-Generate input file by running ./data/gen_vis_input.py
+Generate input file by running ./data/generate_vision_input.py
 and generate configurations of LPUs by running ./data/generate_vision_gexf.py
 """
 
@@ -19,6 +19,7 @@ nx.readwrite.gexf.GEXF.convert_bool = {'false':False, 'False':False,
 
 from neurokernel.tools.logging import setup_logger
 import neurokernel.core_gpu as core
+import neurokernel.pattern as pattern
 
 from neurokernel.LPU.LPU import LPU
 import data.vision_configuration as vc
@@ -60,16 +61,16 @@ lam_id = 'lamina'
 (n_dict_lam, s_dict_lam) = LPU.lpu_parser('./data/lamina.gexf.gz')
 man.add(LPU, lam_id, dt, n_dict_lam, s_dict_lam,
         input_file='./data/vision_input.h5',
-        output_file='lamina_output.h5', 
+        output_file='lamina_output.h5',
         device=args.lam_dev, time_sync=args.time_sync)
 
 med_id = 'medulla'
 (n_dict_med, s_dict_med) = LPU.lpu_parser('./data/medulla.gexf.gz')
 man.add(LPU, med_id, dt, n_dict_med, s_dict_med,
-        output_file='medulla_output.h5', 
+        output_file='medulla_output.h5',
         device=args.med_dev, time_sync=args.time_sync)
 
-pat = vc.create_pattern(n_dict_lam, n_dict_med)
+pat = pattern.Pattern.from_graph(nx.read_gexf('./data/lam_med.gexf.gz'))
 man.connect(lam_id, med_id, pat, 0, 1, compat_check=False)
 
 man.spawn()
