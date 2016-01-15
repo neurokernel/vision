@@ -125,7 +125,6 @@ class vision_LPU(object):
         
         self.composition_rules = []
 
-#    def read_neurons(self):
         # read in csv file and turn it into a numpy structured array
         neuron_list = []
         dtypes = [np.dtype('S10'), np.dtype('S32'),
@@ -135,7 +134,7 @@ class vision_LPU(object):
                   np.dtype(np.double), np.dtype(np.double),
                   np.dtype(np.double), np.dtype(np.double),
                   np.dtype(np.double), np.dtype(np.double),
-                  np.dtype(np.double), np.dtype(np.double)]
+                  np.dtype(np.double), np.dtype(np.double), np.dtype('S32'), np.dtype('S32')]
     
         with open(self.neuron_csv, 'rU') as csvfile:
             reader = csv.reader(csvfile)
@@ -150,7 +149,6 @@ class vision_LPU(object):
             neuron_list,
             dtype = [(a, b) for a, b in zip(self.neuron_field_name, dtypes)])
         
-#    def read_synapses(self):
         # read in csv file and turn it into a numpy structured array
         if self.columnar_synapse_csv is not None:
             synapse_list = []
@@ -268,6 +266,10 @@ class vision_LPU(object):
                         neuron = cartridge.neurons[name]
                         neuron.add_num(num)
                         neuron.process_before_export()
+                        if self.__class__.__name__ == 'Lamina':
+                            neuron.params['circuit'] = 'cart' + str(cartridge.num)
+                        else:
+                            neuron.params['circuit'] = 'col' + str(cartridge.num)
                         g.add_node(num, neuron.params)
                         num += 1
 
@@ -281,12 +283,17 @@ class vision_LPU(object):
         for cartridge in self.cartridges:
             for synapse in cartridge.synapses:
                 synapse.process_before_export()
+                if self.__class__.__name__ == 'Lamina':
+                    synapse.params['circuit'] = 'cart' + str(cartridge.num)
+                else:
+                    synapse.params['circuit'] = 'col' + str(cartridge.num)
                 g.add_edge(synapse.pre_neuron.num, synapse.post_neuron.num,
                            attr_dict = synapse.params)
     
         for cr in self.composition_rules:
             for synapse in cr['synapses']:
                 synapse.process_before_export()
+                synapse.params['circuit'] = 'cr' + str(cr['num'])
                 g.add_edge(synapse.pre_neuron.num, synapse.post_neuron.num,
                            attr_dict = synapse.params)
     
@@ -353,7 +360,7 @@ class Lamina(vision_LPU):
                         cartridge.neurons[synapse_array['prename']],
                         cartridge.neighbors[neighbor_num].neurons[synapse_array['postname']])
                     synapse_list.append(synapse)
-        self.composition_rules.append({'synapses': synapse_list})
+        self.composition_rules.append({'synapses': synapse_list, 'num':2})
 
     def connect_composition_I(self):
         am_list = self.non_columnar_neurons['Am']
@@ -366,6 +373,7 @@ class Lamina(vision_LPU):
         for neuron in am_list:
             neuron.assign_pos(np.asscalar(am_xpos[count]),
                               np.asscalar(am_ypos[count]))
+            neuron.params['circuit'] = 'cr1'
             count += 1
 
         bound = 4.0
@@ -376,10 +384,11 @@ class Lamina(vision_LPU):
             xpos = cartridge.xpos
             ypos = cartridge.ypos
             
-            #calculate distance and find amacrine cells within 
-            #distance defined by bound
+            # calculate distance and find amacrine cells within 
+            # distance defined by bound
             dist = np.sqrt((xpos-am_xpos)**2 + (ypos-am_ypos)**2)
             suitable_am = np.nonzero(dist <= bound)[0]
+
             # if less than 4 neurons in the bound, get
             # the 4 closest amacrine cells 
             if suitable_am.size < 4:
@@ -400,7 +409,7 @@ class Lamina(vision_LPU):
             count += 1
 
         self.fill = fill
-        self.composition_rules.append( {'synapses': synapse_list} )
+        self.composition_rules.append( {'synapses': synapse_list, 'num':1} )
     
     def __repr__(self):
         if hasattr(self, 'cartridges'):
@@ -434,7 +443,7 @@ class Medulla(vision_LPU):
                         cartridge.neurons[synapse_array['prename']],
                         cartridge.neighbors[neighbor_num].neurons[synapse_array['postname']])
                     synapse_list.append(synapse)
-        self.composition_rules.append({'synapses': synapse_list})
+        self.composition_rules.append({'synapses': synapse_list, 'num':1})
     
     def connect_composition_II(self):
         synapse_list = []
@@ -509,7 +518,7 @@ class Medulla(vision_LPU):
                         cartridge.neighbors[6].neighbors[5].neurons['Dm3'])
                     synapse_list.append(synapse)
             
-        self.composition_rules.append({'synapses': synapse_list})
+        self.composition_rules.append({'synapses': synapse_list, 'num':2})
     
     def connect_composition_III(self):
         synapse_list = []
@@ -518,8 +527,10 @@ class Medulla(vision_LPU):
         
         for neuron in Mt3v_list:
             neuron.assign_pos(0., 0.)
+            neuron.params['circuit'] = 'cr3'
         for neuron in Mt3h_list:
             neuron.assign_pos(0., 0.)
+            neuron.params['circuit'] = 'cr3'
         
         rule3synapsesv = self.other_synapse_dict[self.other_synapse_dict['postname'] == 'Mt3v']
         rule3synapsesh = self.other_synapse_dict[self.other_synapse_dict['postname'] == 'Mt3h']
@@ -535,7 +546,7 @@ class Medulla(vision_LPU):
             synapse.link(cartridge.neurons['L2'], Mt3h_list[mtn])
             synapse_list.append(synapse)
 
-        self.composition_rules.append({'synapses': synapse_list})
+        self.composition_rules.append({'synapses': synapse_list, 'num':3})
         
     
     def __repr__(self):
@@ -824,7 +835,7 @@ def create_pattern(n_dict_1, n_dict_2, save_as=None):
     pat = Pattern.from_concat(lpu1_sel, lpu2_sel,
                               from_sel=from_sel, to_sel=to_sel,
                               gpot_sel=gpot_sel, spike_sel=spike_sel, data=1)
-                              
+    
     if save_as:
         with open(save_as, 'wb') as pat_file:
             pickle.dump(pat, pat_file)
