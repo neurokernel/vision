@@ -147,6 +147,7 @@ class vision_LPU(object):
             reader = csv.reader(csvfile)
             self.neuron_field_name = reader.next()
             n_entry = len(self.neuron_field_name)
+            print n_entry
             for row in reader:
                 tmp = [dtypes[i].type(row[i]) for i in range(n_entry)]
                 neuron_list.append(tuple(tmp))
