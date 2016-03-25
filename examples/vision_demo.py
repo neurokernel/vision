@@ -71,7 +71,7 @@ man.add(LPU, med_id, dt, n_dict_med, s_dict_med,
         device=args.med_dev, time_sync=args.time_sync)
 
 pat = pattern.Pattern.from_graph(nx.read_gexf('./data/lam_med.gexf.gz'))
-man.connect(lam_id, med_id, pat, 0, 1, compat_check=False)
+man.connect(lam_id, med_id, pat, 0, 1)
 
 man.spawn()
 man.start(steps=args.steps)
